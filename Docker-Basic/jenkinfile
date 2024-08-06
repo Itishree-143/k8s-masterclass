@@ -1,0 +1,65 @@
+agent any
+
+    environment {
+        // Define environment variables
+        DOCKER_IMAGE = 'my-app:latest'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the source code from the repository
+                git url: 'https://github.com/Itishree-143/k8s-masterclass.git', branch: 'main'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Build the application
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build the Docker image
+                sh 'docker build -t $DOCKER_IMAGE .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                // Push the Docker image to the registry
+                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
+                    sh 'echo $DOCKERHUB_TOKEN | docker login -u my-username --password-stdin'
+                    sh 'docker push $DOCKER_IMAGE'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                // Deploy the application using Kubernetes
+                sh 'kubectl apply -f k8s/deployment.yaml'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                // Run tests against the deployed application
+                sh 'curl -f http://my-app.example.com/health'
+            }
+        }
+    }
+
+    post {
+        success {
+            // Actions to perform on successful pipeline execution
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            // Actions to perform on pipeline failure
+            echo 'Pipeline failed!'
+        }
+    }
+}
